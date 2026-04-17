@@ -26,10 +26,10 @@ func (m *mockCreateProduct) Execute(ctx context.Context, p *domain.Product) erro
 }
 
 type mockGetProducts struct {
-	fn func(ctx context.Context, f domain.ProductFilter) ([]domain.Product, int64, error)
+	fn func(ctx context.Context, f common.Filter) ([]domain.Product, int64, error)
 }
 
-func (m *mockGetProducts) Execute(ctx context.Context, f domain.ProductFilter) ([]domain.Product, int64, error) {
+func (m *mockGetProducts) Execute(ctx context.Context, f common.Filter) ([]domain.Product, int64, error) {
 	if m.fn != nil {
 		return m.fn(ctx, f)
 	}
@@ -160,7 +160,7 @@ func TestGetProducts_Success(t *testing.T) {
 	}
 
 	h := newTestHandler(nil,
-		&mockGetProducts{fn: func(ctx context.Context, f domain.ProductFilter) ([]domain.Product, int64, error) {
+		&mockGetProducts{fn: func(ctx context.Context, f common.Filter) ([]domain.Product, int64, error) {
 			return products, 2, nil
 		}},
 		nil,

@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"super-indo-api/internal/product/domain"
 	"super-indo-api/internal/product/port"
+	"super-indo-api/pkg/common"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -43,11 +43,8 @@ func (r *productRepository) Save(ctx context.Context, product *domain.Product) e
 	return nil
 }
 
-func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFilter) ([]domain.Product, int64, error) {
-	cacheKey := fmt.Sprintf("products:list:%s:%s:%s:%s:%s:%s:%d:%d",
-		filter.Search, filter.Name, filter.Type, filter.Description,
-		filter.SortBy, filter.Order, filter.Page, filter.Limit,
-	)
+func (r *productRepository) FindAll(ctx context.Context, filter common.Filter) ([]domain.Product, int64, error) {
+	cacheKey := filter.CacheKey("products:list")
 
 	cached, err := r.cache.Get(ctx, cacheKey).Result()
 	if err == nil {
@@ -57,38 +54,8 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 		}
 	}
 
-	var conditions []string
-	var args []interface{}
-	argIdx := 1
-
-	if filter.Search != "" {
-		conditions = append(conditions, fmt.Sprintf("(LOWER(name) LIKE LOWER($%d) OR LOWER(COALESCE(description, '')) LIKE LOWER($%d))", argIdx, argIdx))
-		args = append(args, "%"+filter.Search+"%")
-		argIdx++
-	}
-
-	if filter.Name != "" {
-		conditions = append(conditions, fmt.Sprintf("LOWER(name) LIKE LOWER($%d)", argIdx))
-		args = append(args, "%"+filter.Name+"%")
-		argIdx++
-	}
-
-	if filter.Type != "" {
-		conditions = append(conditions, fmt.Sprintf("LOWER(type) LIKE LOWER($%d)", argIdx))
-		args = append(args, "%"+string(filter.Type)+"%")
-		argIdx++
-	}
-
-	if filter.Description != "" {
-		conditions = append(conditions, fmt.Sprintf("LOWER(COALESCE(description, '')) LIKE LOWER($%d)", argIdx))
-		args = append(args, "%"+filter.Description+"%")
-		argIdx++
-	}
-
-	whereClause := ""
-	if len(conditions) > 0 {
-		whereClause = "WHERE " + strings.Join(conditions, " AND ")
-	}
+	whereClause, args, nextIdx := filter.BuildWhereClause(1)
+	orderClause := filter.BuildOrderClause()
 
 	var total int64
 	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM products %s", whereClause)
@@ -96,31 +63,14 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 		return nil, 0, fmt.Errorf("count query: %w", err)
 	}
 
-	sortColumn := "created_at"
-	switch filter.SortBy {
-	case "price":
-		sortColumn = "price"
-	case "name":
-		sortColumn = "name"
-	case "date":
-		sortColumn = "created_at"
-	}
-
-	orderDir := "DESC"
-	if filter.Order == "asc" {
-		orderDir = "ASC"
-	}
-
-	offset := (filter.Page - 1) * filter.Limit
-
 	dataSQL := fmt.Sprintf(`
 		SELECT id, name, type, price, COALESCE(description, ''), stock, created_at, updated_at
 		FROM products %s
-		ORDER BY %s %s
+		%s
 		LIMIT $%d OFFSET $%d`,
-		whereClause, sortColumn, orderDir, argIdx, argIdx+1,
+		whereClause, orderClause, nextIdx, nextIdx+1,
 	)
-	args = append(args, filter.Limit, offset)
+	args = append(args, filter.Limit, filter.Offset())
 
 	rows, err := r.db.QueryContext(ctx, dataSQL, args...)
 	if err != nil {

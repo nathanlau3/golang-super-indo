@@ -69,21 +69,44 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 		limit = 10
 	}
 
-	filter := domain.ProductFilter{
-		Search:      c.Query("search"),
-		Name:        c.Query("name"),
-		Type:        domain.ProductType(c.Query("type")),
-		Description: c.Query("description"),
-		SortBy:      c.Query("sort_by"),
-		Order:       c.Query("order"),
-		Page:        page,
-		Limit:       limit,
+	allowedFields := map[string]string{
+		"name":        "name",
+		"type":        "type",
+		"description": "description",
 	}
+
+	filter := common.Filter{
+		Search:       c.Query("search"),
+		SearchFields: []string{"name", "description"},
+		SortBy:       c.Query("sort_by"),
+		Order:        c.Query("order"),
+		Page:         page,
+		Limit:        limit,
+		SortAllowed: map[string]string{
+			"name":  "name",
+			"price": "price",
+			"date":  "created_at",
+			"stock": "stock",
+			"type":  "type",
+		},
+		DefaultSort: "created_at",
+	}
+	columns := c.QueryArray("filter[]")
+	values := c.QueryArray("filter_search[]")
+	if len(columns) == 0 {
+		columns = c.QueryArray("filter")
+		values = c.QueryArray("filter_search")
+	}
+	filter.LoadFields(columns, values, allowedFields)
 
 	products, total, err := h.getProducts.Execute(c.Request.Context(), filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Error(http.StatusInternalServerError, "gagal mengambil data produk"))
 		return
+	}
+
+	if products == nil {
+		products = []domain.Product{}
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))

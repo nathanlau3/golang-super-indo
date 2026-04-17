@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"super-indo-api/internal/product/domain"
+	"super-indo-api/pkg/common"
 )
 
 type CreateProductUseCase interface {
@@ -11,7 +12,7 @@ type CreateProductUseCase interface {
 }
 
 type GetProductsUseCase interface {
-	Execute(ctx context.Context, filter domain.ProductFilter) ([]domain.Product, int64, error)
+	Execute(ctx context.Context, filter common.Filter) ([]domain.Product, int64, error)
 }
 
 type GetProductByIDUseCase interface {

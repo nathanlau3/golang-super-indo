@@ -70,14 +70,4 @@ func NewProduct(name, productType string, price float64, description string, sto
 	}, nil
 }
 
-type ProductFilter struct {
-	Search      string
-	Name        string
-	Type        ProductType
-	Description string
-	SortBy      string
-	Order       string
-	Page        int
-	Limit       int
-}
 
