@@ -24,7 +24,10 @@ func main() {
 	r := gin.Default()
 
 	app.AuthHandler.RegisterRoutes(r.Group("/auth"))
-	app.ProductHandler.RegisterRoutes(r.Group("/product"), app.AuthMiddleware)
+
+	productGroup := r.Group("/product")
+	productGroup.Use(app.AuthMiddleware)
+	app.ProductHandler.RegisterRoutes(productGroup)
 
 	port := app.Config.AppPort
 	if port == "" {

@@ -30,10 +30,10 @@ func NewProductHandler(
 	}
 }
 
-func (h *ProductHandler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
+func (h *ProductHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("", h.GetProducts)
 	rg.GET("/:id", h.GetProductByID)
-	rg.POST("", authMiddleware, h.CreateProduct)
+	rg.POST("", h.CreateProduct)
 }
 
 func (h *ProductHandler) CreateProduct(c *gin.Context) {

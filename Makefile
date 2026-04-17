@@ -1,6 +1,9 @@
-.PHONY: run seed build test infra-up infra-down docker-up docker-down clean
+.PHONY: run dev seed build test infra-up infra-down docker-up docker-down clean
 
 run:
+	air
+
+dev:
 	go run ./cmd/api
 
 seed:
