@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"super-indo-api/internal/product/domain"
+	"super-indo-api/pkg/common"
 
 	"github.com/gin-gonic/gin"
 )
@@ -174,14 +175,14 @@ func TestGetProducts_Success(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	var resp PaginatedResponse
+	var resp common.PaginatedResponse
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp.Meta.Total != 2 {
 		t.Errorf("expected total 2, got %d", resp.Meta.Total)
 	}
 }
 
-func TestGetProducts_InvalidType(t *testing.T) {
+func TestGetProducts_UnknownType(t *testing.T) {
 	h := newTestHandler(nil, nil, nil)
 	r := setupTestRouter(h)
 
@@ -189,8 +190,8 @@ func TestGetProducts_InvalidType(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/product?type=Minuman", nil)
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 }
 

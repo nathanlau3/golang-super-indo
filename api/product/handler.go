@@ -8,6 +8,7 @@ import (
 
 	"super-indo-api/internal/product/domain"
 	"super-indo-api/internal/product/port"
+	"super-indo-api/pkg/common"
 
 	"github.com/gin-gonic/gin"
 )
@@ -39,35 +40,22 @@ func (h *ProductHandler) RegisterRoutes(rg *gin.RouterGroup) {
 func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	var req CreateProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: "format JSON tidak valid: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, common.Error(http.StatusBadRequest, "format JSON tidak valid: "+err.Error()))
 		return
 	}
 
 	product, err := domain.NewProduct(req.Name, req.Type, req.Price, req.Description, req.Stock)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, common.Error(http.StatusBadRequest, err.Error()))
 		return
 	}
 
 	if err := h.createProduct.Execute(c.Request.Context(), product); err != nil {
-		c.JSON(http.StatusInternalServerError, Response{
-			Status:  http.StatusInternalServerError,
-			Message: "gagal menyimpan produk",
-		})
+		c.JSON(http.StatusInternalServerError, common.Error(http.StatusInternalServerError, "gagal menyimpan produk"))
 		return
 	}
 
-	c.JSON(http.StatusCreated, Response{
-		Status:  http.StatusCreated,
-		Message: "produk berhasil ditambahkan",
-		Data:    toProductResponse(product),
-	})
+	c.JSON(http.StatusCreated, common.Success(http.StatusCreated, "produk berhasil ditambahkan", toProductResponse(product)))
 }
 
 func (h *ProductHandler) GetProducts(c *gin.Context) {
@@ -81,81 +69,49 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 		limit = 10
 	}
 
-	typeStr := c.Query("type")
-	var productType domain.ProductType
-	if typeStr != "" {
-		productType = domain.ProductType(typeStr)
-		if !productType.IsValid() {
-			c.JSON(http.StatusBadRequest, Response{
-				Status:  http.StatusBadRequest,
-				Message: "tipe produk tidak valid",
-			})
-			return
-		}
-	}
-
 	filter := domain.ProductFilter{
-		Search: c.Query("search"),
-		Type:   productType,
-		SortBy: c.Query("sort_by"),
-		Order:  c.Query("order"),
-		Page:   page,
-		Limit:  limit,
+		Search:      c.Query("search"),
+		Name:        c.Query("name"),
+		Type:        domain.ProductType(c.Query("type")),
+		Description: c.Query("description"),
+		SortBy:      c.Query("sort_by"),
+		Order:       c.Query("order"),
+		Page:        page,
+		Limit:       limit,
 	}
 
 	products, total, err := h.getProducts.Execute(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Response{
-			Status:  http.StatusInternalServerError,
-			Message: "gagal mengambil data produk",
-		})
+		c.JSON(http.StatusInternalServerError, common.Error(http.StatusInternalServerError, "gagal mengambil data produk"))
 		return
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	c.JSON(http.StatusOK, PaginatedResponse{
-		Status:  http.StatusOK,
-		Message: "success",
-		Data:    toProductListResponse(products),
-		Meta: Meta{
-			Page:      page,
-			Limit:     limit,
-			Total:     total,
-			TotalPage: totalPage,
-		},
-	})
+	c.JSON(http.StatusOK, common.Paginated(http.StatusOK, "success", toProductListResponse(products), common.Meta{
+		Page:      page,
+		Limit:     limit,
+		Total:     total,
+		TotalPage: totalPage,
+	}))
 }
 
 func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: "id produk tidak valid",
-		})
+		c.JSON(http.StatusBadRequest, common.Error(http.StatusBadRequest, "id produk tidak valid"))
 		return
 	}
 
 	product, err := h.getProductByID.Execute(c.Request.Context(), uint(id))
 	if err != nil {
 		if errors.Is(err, domain.ErrProductNotFound) {
-			c.JSON(http.StatusNotFound, Response{
-				Status:  http.StatusNotFound,
-				Message: err.Error(),
-			})
+			c.JSON(http.StatusNotFound, common.Error(http.StatusNotFound, err.Error()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, Response{
-			Status:  http.StatusInternalServerError,
-			Message: "gagal mengambil data produk",
-		})
+		c.JSON(http.StatusInternalServerError, common.Error(http.StatusInternalServerError, "gagal mengambil data produk"))
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{
-		Status:  http.StatusOK,
-		Message: "success",
-		Data:    toProductResponse(product),
-	})
+	c.JSON(http.StatusOK, common.Success(http.StatusOK, "success", toProductResponse(product)))
 }

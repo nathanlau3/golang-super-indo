@@ -30,12 +30,6 @@ type LoginResponse struct {
 	User  UserResponse `json:"user"`
 }
 
-type Response struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
 func toUserResponse(u *domain.User) UserResponse {
 	return UserResponse{
 		ID:        u.ID,

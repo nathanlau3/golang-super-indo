@@ -44,8 +44,9 @@ func (r *productRepository) Save(ctx context.Context, product *domain.Product) e
 }
 
 func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFilter) ([]domain.Product, int64, error) {
-	cacheKey := fmt.Sprintf("products:list:%s:%s:%s:%s:%d:%d",
-		filter.Search, filter.Type, filter.SortBy, filter.Order, filter.Page, filter.Limit,
+	cacheKey := fmt.Sprintf("products:list:%s:%s:%s:%s:%s:%s:%d:%d",
+		filter.Search, filter.Name, filter.Type, filter.Description,
+		filter.SortBy, filter.Order, filter.Page, filter.Limit,
 	)
 
 	cached, err := r.cache.Get(ctx, cacheKey).Result()
@@ -61,14 +62,26 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 	argIdx := 1
 
 	if filter.Search != "" {
-		conditions = append(conditions, fmt.Sprintf("LOWER(name) LIKE LOWER($%d)", argIdx))
+		conditions = append(conditions, fmt.Sprintf("(LOWER(name) LIKE LOWER($%d) OR LOWER(COALESCE(description, '')) LIKE LOWER($%d))", argIdx, argIdx))
 		args = append(args, "%"+filter.Search+"%")
 		argIdx++
 	}
 
+	if filter.Name != "" {
+		conditions = append(conditions, fmt.Sprintf("LOWER(name) LIKE LOWER($%d)", argIdx))
+		args = append(args, "%"+filter.Name+"%")
+		argIdx++
+	}
+
 	if filter.Type != "" {
-		conditions = append(conditions, fmt.Sprintf("type = $%d", argIdx))
-		args = append(args, filter.Type.String())
+		conditions = append(conditions, fmt.Sprintf("LOWER(type) LIKE LOWER($%d)", argIdx))
+		args = append(args, "%"+string(filter.Type)+"%")
+		argIdx++
+	}
+
+	if filter.Description != "" {
+		conditions = append(conditions, fmt.Sprintf("LOWER(COALESCE(description, '')) LIKE LOWER($%d)", argIdx))
+		args = append(args, "%"+filter.Description+"%")
 		argIdx++
 	}
 

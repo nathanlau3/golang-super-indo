@@ -6,6 +6,7 @@ import (
 
 	"super-indo-api/internal/auth/domain"
 	"super-indo-api/internal/auth/port"
+	"super-indo-api/pkg/common"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,76 +28,47 @@ func (h *AuthHandler) RegisterRoutes(rg *gin.RouterGroup) {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: "format JSON tidak valid: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, common.Error(http.StatusBadRequest, "format JSON tidak valid: "+err.Error()))
 		return
 	}
 
 	user, err := domain.NewUser(req.Email, req.Password, req.Name)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, common.Error(http.StatusBadRequest, err.Error()))
 		return
 	}
 
 	if err := h.register.Execute(c.Request.Context(), user); err != nil {
 		if errors.Is(err, domain.ErrEmailAlreadyExists) {
-			c.JSON(http.StatusConflict, Response{
-				Status:  http.StatusConflict,
-				Message: err.Error(),
-			})
+			c.JSON(http.StatusConflict, common.Error(http.StatusConflict, err.Error()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, Response{
-			Status:  http.StatusInternalServerError,
-			Message: "gagal mendaftarkan user",
-		})
+		c.JSON(http.StatusInternalServerError, common.Error(http.StatusInternalServerError, "gagal mendaftarkan user"))
 		return
 	}
 
-	c.JSON(http.StatusCreated, Response{
-		Status:  http.StatusCreated,
-		Message: "registrasi berhasil",
-		Data:    toUserResponse(user),
-	})
+	c.JSON(http.StatusCreated, common.Success(http.StatusCreated, "registrasi berhasil", toUserResponse(user)))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: "format JSON tidak valid: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, common.Error(http.StatusBadRequest, "format JSON tidak valid: "+err.Error()))
 		return
 	}
 
 	user, token, err := h.login.Execute(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidCredentials) {
-			c.JSON(http.StatusUnauthorized, Response{
-				Status:  http.StatusUnauthorized,
-				Message: err.Error(),
-			})
+			c.JSON(http.StatusUnauthorized, common.Error(http.StatusUnauthorized, err.Error()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, Response{
-			Status:  http.StatusInternalServerError,
-			Message: "gagal login",
-		})
+		c.JSON(http.StatusInternalServerError, common.Error(http.StatusInternalServerError, "gagal login"))
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{
-		Status:  http.StatusOK,
-		Message: "login berhasil",
-		Data: LoginResponse{
-			Token: token,
-			User:  toUserResponse(user),
-		},
-	})
+	c.JSON(http.StatusOK, common.Success(http.StatusOK, "login berhasil", LoginResponse{
+		Token: token,
+		User:  toUserResponse(user),
+	}))
 }
