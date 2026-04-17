@@ -16,6 +16,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "seed" {
 		log.Println("menjalankan seeder...")
 		postgres.SeedProducts(app.DB)
+		postgres.SeedUsers(app.DB)
 		log.Println("seeder selesai")
 		return
 	}

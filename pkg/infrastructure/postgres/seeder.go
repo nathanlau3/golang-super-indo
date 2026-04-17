@@ -3,6 +3,8 @@ package postgres
 import (
 	"database/sql"
 	"log"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type seedProduct struct {
@@ -61,6 +63,50 @@ func SeedProducts(db *sql.DB) {
 			log.Printf("gagal seed %s: %v", p.Name, err)
 		} else {
 			log.Printf("seeded: %s", p.Name)
+		}
+	}
+}
+
+type seedUser struct {
+	Email    string
+	Password string
+	Name     string
+}
+
+func SeedUsers(db *sql.DB) {
+	users := []seedUser{
+		{"admin@superindo.co.id", "admin123", "Admin Super Indo"},
+		{"kasir@superindo.co.id", "kasir123", "Kasir Super Indo"},
+		{"manager@superindo.co.id", "manager123", "Manager Super Indo"},
+	}
+
+	for _, u := range users {
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", u.Email).Scan(&count)
+		if err != nil {
+			log.Printf("gagal cek user %s: %v", u.Email, err)
+			continue
+		}
+		if count > 0 {
+			log.Printf("skip: %s (sudah ada)", u.Email)
+			continue
+		}
+
+		hashed, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("gagal hash password %s: %v", u.Email, err)
+			continue
+		}
+
+		_, err = db.Exec(
+			`INSERT INTO users (email, password, name, created_at, updated_at)
+			 VALUES ($1, $2, $3, NOW(), NOW())`,
+			u.Email, string(hashed), u.Name,
+		)
+		if err != nil {
+			log.Printf("gagal seed %s: %v", u.Email, err)
+		} else {
+			log.Printf("seeded: %s", u.Email)
 		}
 	}
 }

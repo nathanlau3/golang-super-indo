@@ -1,13 +1,13 @@
 .PHONY: run seed build test infra-up infra-down docker-up docker-down clean
 
 run:
-	go run cmd/api/main.go
+	go run ./cmd/api
 
 seed:
-	go run cmd/api/main.go seed
+	go run ./cmd/api seed
 
 build:
-	go build -o bin/super-indo-api cmd/api/main.go
+	go build -o bin/super-indo-api ./cmd/api
 
 test:
 	go test ./... -v -cover

@@ -1,12 +1,13 @@
 # Super Indo Product API
 
-REST API sederhana buat manage data produk Super Indo. Tech stack utama Go + Gin, PostgreSQL, dan Redis buat caching.
+REST API untuk manage data produk Super Indo, dilengkapi JWT authentication. Tech stack Go + Gin, PostgreSQL, Redis, dan RSA256 JWT.
 
 ## Tech Stack
 
 - Go 1.21+ (Gin)
 - PostgreSQL 15+ (raw query, tanpa ORM)
 - Redis 7+
+- JWT RS256 (RSA key pair)
 - Viper (config)
 - Docker
 
@@ -16,40 +17,62 @@ Struktur project pakai konsep Hexagonal Architecture / Ports & Adapters, di-grou
 
 ```
 .
-├── api/                                        # Presentation layer
+├── api/
+│   ├── auth/
+│   │   ├── handler.go
+│   │   └── dto.go
 │   └── product/
-│       ├── handler.go                          #   HTTP handler (Gin)
+│       ├── handler.go
 │       ├── handler_test.go
-│       └── dto.go                              #   Request & response struct
+│       └── dto.go
 │
 ├── cmd/api/
-│   └── main.go                                 # Entry point, wiring dependency
+│   ├── main.go
+│   └── bootstrap.go
 │
-├── internal/product/                           # Core business logic
-│   ├── domain/
-│   │   ├── product.go                          #   Entity, value object, error
-│   │   └── product_test.go
-│   ├── port/
-│   │   ├── inbound.go                          #   Use case interface (dipanggil handler)
-│   │   └── outbound.go                         #   Repository interface (diimplementasi adapter)
-│   └── usecase/
-│       ├── create_product.go                   #   Tiap use case 1 file, 1 method Execute()
-│       ├── get_products.go
-│       └── get_product_by_id.go
+├── internal/
+│   ├── auth/
+│   │   ├── domain/
+│   │   │   └── user.go
+│   │   ├── port/
+│   │   │   ├── inbound.go
+│   │   │   └── outbound.go
+│   │   └── usecase/
+│   │       ├── register.go
+│   │       └── login.go
+│   └── product/
+│       ├── domain/
+│       │   ├── product.go
+│       │   └── product_test.go
+│       ├── port/
+│       │   ├── inbound.go
+│       │   └── outbound.go
+│       └── usecase/
+│           ├── create_product.go
+│           ├── get_products.go
+│           └── get_product_by_id.go
 │
 ├── pkg/
 │   ├── config/
-│   │   └── config.go                           # Viper config loader
+│   │   └── config.go
+│   ├── credentials/
+│   │   ├── jwtRS256.key
+│   │   └── jwtRS256.key.pub
+│   ├── middleware/
+│   │   └── auth.go
 │   └── infrastructure/
 │       ├── adapter/
-│       │   └── product_repository.go           # Implementasi repository (Postgres + Redis)
+│       │   ├── product_repository.go
+│       │   └── user_repository.go
+│       ├── jwt/
+│       │   └── jwt.go
 │       ├── postgres/
-│       │   ├── postgres.go                     # DB connection
-│       │   ├── migration.go                    # Embedded SQL migration
-│       │   ├── seeder.go                       # Seed data produk
-│       │   └── migrations/                     # File .sql
+│       │   ├── postgres.go
+│       │   ├── migration.go
+│       │   ├── seeder.go
+│       │   └── migrations/
 │       └── redis/
-│           └── redis.go                        # Redis connection
+│           └── redis.go
 │
 ├── Dockerfile
 ├── docker-compose.yml
@@ -60,33 +83,28 @@ Struktur project pakai konsep Hexagonal Architecture / Ports & Adapters, di-grou
 ### Alur Dependency
 
 ```
-api/product (handler)
+api (handler)
     │
     ▼
-internal/product/port (inbound)  ←── usecase (implementasi)
-                                          │
-                                          ▼
-internal/product/port (outbound) ←── pkg/infrastructure/adapter (implementasi)
+internal/*/port (inbound)  ←── usecase (implementasi)
+                                    │
+                                    ▼
+internal/*/port (outbound) ←── pkg/infrastructure/adapter (implementasi)
 ```
 
-Use case cuma bergantung ke port (interface), gak tau sama sekali soal Postgres atau Redis. Semua infrastructure detail ada di adapter.
+Use case cuma bergantung ke port (interface), gak tau sama sekali soal Postgres, Redis, atau JWT. Semua infrastructure detail ada di adapter.
 
 ## Setup & Run
 
 ### Pakai Docker (paling gampang)
 
 ```bash
-# start postgres + redis
 make infra-up
-
-# jalankan app
 make run
-
-# isi data awal
 make seed
 ```
 
-Atau kalau mau full dockerized (app + infra sekaligus):
+Atau full dockerized (app + infra sekaligus):
 ```bash
 make docker-up
 ```
@@ -95,48 +113,135 @@ make docker-up
 
 ```bash
 cp .env.example .env
-# edit .env sesuai kebutuhan
-
 go mod tidy
-go run cmd/api/main.go
+make run
+make seed
+```
 
-# seed data
-go run cmd/api/main.go seed
+### Generate RSA Key Pair
+
+Key pair untuk JWT signing harus ada di `pkg/credentials/` sebelum app bisa jalan.
+
+```bash
+mkdir -p pkg/credentials
+openssl genrsa -out pkg/credentials/jwtRS256.key 4096
+openssl rsa -in pkg/credentials/jwtRS256.key -pubout -out pkg/credentials/jwtRS256.key.pub
 ```
 
 ### Makefile
 
 ```bash
-make run            # go run
-make seed           # jalankan seeder
+make run            # jalankan app
+make seed           # seed produk + user
 make test           # unit test + coverage
 make build          # compile binary
-make infra-up       # docker postgres + redis aja
+make infra-up       # docker postgres + redis
 make infra-down     # stop docker
 make docker-up      # full stack (app + infra)
 make docker-down    # stop semua
 ```
 
+## Environment Variables
+
+| Variable | Default | Keterangan |
+|----------|---------|------------|
+| APP_PORT | 8080 | Port server |
+| DB_HOST | localhost | Host PostgreSQL |
+| DB_PORT | 5432 | Port PostgreSQL |
+| DB_USER | postgres | User database |
+| DB_PASSWORD | postgres | Password database |
+| DB_NAME | superindo | Nama database |
+| REDIS_ADDR | localhost:6379 | Alamat Redis |
+| REDIS_PASSWORD | | Password Redis |
+| JWT_PRIVATE_KEY_PATH | pkg/credentials/jwtRS256.key | Path RSA private key |
+| JWT_PUBLIC_KEY_PATH | pkg/credentials/jwtRS256.key.pub | Path RSA public key |
+
 ## Migration
 
-SQL migration ada di `pkg/infrastructure/postgres/migrations/`. File ini di-embed pakai `go:embed` dan otomatis jalan waktu app start, jadi gak perlu tool migration tambahan.
+SQL migration ada di `pkg/infrastructure/postgres/migrations/`. File ini di-embed pakai `go:embed` dan otomatis jalan waktu app start.
 
-Kalau mau manual:
-```bash
-psql -U postgres -d superindo -f pkg/infrastructure/postgres/migrations/20240115100000_create_products_table.up.sql
-```
+Table yang dibuat:
+- `products` — data produk
+- `users` — data user untuk authentication
 
 ## API
 
 Base URL: `http://localhost:8080`
 
-### POST /product
+### Auth
 
-Tambah produk baru. Tipe yang valid: `Sayuran`, `Protein`, `Buah`, `Snack`.
+#### POST /auth/register
+
+Registrasi user baru. Password minimal 6 karakter.
+
+```bash
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password123",
+    "name": "John Doe"
+  }'
+```
+
+Response `201`:
+```json
+{
+  "status": 201,
+  "message": "registrasi berhasil",
+  "data": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "created_at": "2024-01-15T10:00:00+07:00",
+    "updated_at": "2024-01-15T10:00:00+07:00"
+  }
+}
+```
+
+#### POST /auth/login
+
+Login dan dapatkan JWT token. Token berlaku 24 jam.
+
+```bash
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@superindo.co.id",
+    "password": "admin123"
+  }'
+```
+
+Response `200`:
+```json
+{
+  "status": 200,
+  "message": "login berhasil",
+  "data": {
+    "token": "eyJhbGciOiJSUzI1NiIs...",
+    "user": {
+      "id": 1,
+      "email": "admin@superindo.co.id",
+      "name": "Admin Super Indo",
+      "created_at": "2024-01-15T10:00:00+07:00",
+      "updated_at": "2024-01-15T10:00:00+07:00"
+    }
+  }
+}
+```
+
+### Product
+
+#### POST /product (Protected)
+
+Tambah produk baru. Memerlukan JWT token di header Authorization.
+
+Tipe yang valid: `Sayuran`, `Protein`, `Buah`, `Snack`.
 
 ```bash
 curl -X POST http://localhost:8080/product \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
   -d '{
     "name": "Bayam Segar",
     "type": "Sayuran",
@@ -164,7 +269,7 @@ Response `201`:
 }
 ```
 
-### GET /product
+#### GET /product (Public)
 
 Ambil list produk. Support search, filter, sort, dan pagination.
 
@@ -178,13 +283,8 @@ Ambil list produk. Support search, filter, sort, dan pagination.
 | limit   | int    | 10      | Per halaman (max 50) |
 
 ```bash
-# semua produk
 curl http://localhost:8080/product
-
-# cari "bayam"
 curl "http://localhost:8080/product?search=bayam"
-
-# filter sayuran, sort harga murah dulu
 curl "http://localhost:8080/product?type=Sayuran&sort_by=price&order=asc"
 ```
 
@@ -203,7 +303,7 @@ Response `200`:
 }
 ```
 
-### GET /product/:id
+#### GET /product/:id (Public)
 
 Ambil detail produk berdasarkan ID.
 
@@ -229,6 +329,20 @@ Response `200`:
 }
 ```
 
+## Seed Data
+
+`make seed` akan mengisi data awal:
+
+**20 produk** (Sayuran, Protein, Buah, Snack)
+
+**3 user:**
+
+| Email | Password |
+|-------|----------|
+| admin@superindo.co.id | admin123 |
+| kasir@superindo.co.id | kasir123 |
+| manager@superindo.co.id | manager123 |
+
 ## Caching
 
 Pakai Redis dengan TTL 5 menit. List produk di-cache berdasarkan kombinasi query param, detail produk di-cache per ID. Cache list otomatis di-invalidasi waktu ada produk baru masuk.
@@ -239,9 +353,4 @@ App tetap jalan normal kalau Redis mati, cuma tanpa cache aja.
 
 ```bash
 make test
-```
-
-Atau langsung:
-```bash
-go test ./... -v -cover
 ```
