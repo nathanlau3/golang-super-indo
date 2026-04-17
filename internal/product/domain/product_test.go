@@ -11,20 +11,23 @@ func TestNewProduct(t *testing.T) {
 		productName string
 		productType string
 		price       float64
+		description string
+		stock       int
 		wantErr     error
 	}{
-		{"valid product", "Bayam Segar", "Sayuran", 5000, nil},
-		{"valid snack", "Chitato", "Snack", 12000, nil},
-		{"empty name", "", "Sayuran", 5000, ErrEmptyProductName},
-		{"invalid type", "Bayam", "Minuman", 5000, ErrInvalidProductType},
-		{"empty type", "Bayam", "", 5000, ErrInvalidProductType},
-		{"zero price", "Bayam", "Sayuran", 0, ErrInvalidPrice},
-		{"negative price", "Bayam", "Sayuran", -1000, ErrInvalidPrice},
+		{"valid product", "Bayam Segar", "Sayuran", 5000, "Bayam hijau segar", 100, nil},
+		{"valid snack", "Chitato", "Snack", 12000, "", 0, nil},
+		{"valid with all fields", "Salmon", "Protein", 89000, "Salmon fillet Norway", 20, nil},
+		{"empty name", "", "Sayuran", 5000, "", 0, ErrEmptyProductName},
+		{"invalid type", "Bayam", "Minuman", 5000, "", 0, ErrInvalidProductType},
+		{"empty type", "Bayam", "", 5000, "", 0, ErrInvalidProductType},
+		{"zero price", "Bayam", "Sayuran", 0, "", 0, ErrInvalidPrice},
+		{"negative price", "Bayam", "Sayuran", -1000, "", 0, ErrInvalidPrice},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			product, err := NewProduct(tt.productName, tt.productType, tt.price, "", 0)
+			product, err := NewProduct(tt.productName, tt.productType, tt.price, tt.description, tt.stock)
 
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("NewProduct() error = %v, want %v", err, tt.wantErr)
@@ -40,6 +43,18 @@ func TestNewProduct(t *testing.T) {
 				}
 				if product.Type.String() != tt.productType {
 					t.Errorf("Type = %q, want %q", product.Type, tt.productType)
+				}
+				if product.Price != tt.price {
+					t.Errorf("Price = %v, want %v", product.Price, tt.price)
+				}
+				if product.Description != tt.description {
+					t.Errorf("Description = %q, want %q", product.Description, tt.description)
+				}
+				if product.Stock != tt.stock {
+					t.Errorf("Stock = %d, want %d", product.Stock, tt.stock)
+				}
+				if product.DeletedAt != nil {
+					t.Error("DeletedAt should be nil for new product")
 				}
 			}
 		})

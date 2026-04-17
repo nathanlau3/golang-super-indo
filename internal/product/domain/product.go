@@ -45,6 +45,7 @@ type Product struct {
 	Stock       int         `json:"stock"`
 	CreatedAt   time.Time   `json:"created_at"`
 	UpdatedAt   time.Time   `json:"updated_at"`
+	DeletedAt   *time.Time  `json:"deleted_at,omitempty"`
 }
 
 func NewProduct(name, productType string, price float64, description string, stock int) (*Product, error) {
