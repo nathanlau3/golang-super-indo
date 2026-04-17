@@ -1,0 +1,22 @@
+# Binary
+bin/
+*.exe
+*.dll
+*.so
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vendor (kita pake go modules)
+vendor/
+.claude/
