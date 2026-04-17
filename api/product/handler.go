@@ -30,11 +30,10 @@ func NewProductHandler(
 	}
 }
 
-// RegisterRoutes mendaftarkan semua route product ke router group
-func (h *ProductHandler) RegisterRoutes(rg *gin.RouterGroup) {
-	rg.POST("", h.CreateProduct)
+func (h *ProductHandler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
 	rg.GET("", h.GetProducts)
 	rg.GET("/:id", h.GetProductByID)
+	rg.POST("", authMiddleware, h.CreateProduct)
 }
 
 func (h *ProductHandler) CreateProduct(c *gin.Context) {
@@ -47,7 +46,6 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		return
 	}
 
-	// buat entity lewat domain factory (validasi ada di sini)
 	product, err := domain.NewProduct(req.Name, req.Type, req.Price, req.Description, req.Stock)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, Response{
@@ -83,7 +81,6 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 		limit = 10
 	}
 
-	// validasi type filter kalau ada
 	typeStr := c.Query("type")
 	var productType domain.ProductType
 	if typeStr != "" {

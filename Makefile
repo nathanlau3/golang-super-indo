@@ -12,14 +12,12 @@ build:
 test:
 	go test ./... -v -cover
 
-# jalankan postgres + redis saja (untuk development lokal)
 infra-up:
 	docker-compose up -d postgres redis
 
 infra-down:
 	docker-compose down
 
-# jalankan semua termasuk app
 docker-up:
 	docker-compose --profile fullstack up -d --build
 

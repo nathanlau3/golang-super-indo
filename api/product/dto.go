@@ -6,7 +6,6 @@ import (
 	"super-indo-api/internal/product/domain"
 )
 
-// CreateProductRequest untuk request body POST /product
 type CreateProductRequest struct {
 	Name        string  `json:"name"`
 	Type        string  `json:"type"`
@@ -15,7 +14,6 @@ type CreateProductRequest struct {
 	Stock       int     `json:"stock"`
 }
 
-// ProductResponse merepresentasikan produk dalam HTTP response
 type ProductResponse struct {
 	ID          uint      `json:"id"`
 	Name        string    `json:"name"`
@@ -48,7 +46,6 @@ func toProductListResponse(products []domain.Product) []ProductResponse {
 	return result
 }
 
-// Response wrapper standar untuk semua response
 type Response struct {
 	Status  int         `json:"status"`
 	Message string      `json:"message"`

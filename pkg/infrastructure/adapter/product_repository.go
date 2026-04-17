@@ -39,7 +39,6 @@ func (r *productRepository) Save(ctx context.Context, product *domain.Product) e
 		return err
 	}
 
-	// invalidate list cache karena ada data baru
 	r.invalidateListCache(ctx)
 	return nil
 }
@@ -49,7 +48,6 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 		filter.Search, filter.Type, filter.SortBy, filter.Order, filter.Page, filter.Limit,
 	)
 
-	// coba ambil dari cache
 	cached, err := r.cache.Get(ctx, cacheKey).Result()
 	if err == nil {
 		var result cachedProductList
@@ -58,7 +56,6 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 		}
 	}
 
-	// cache miss, query ke database
 	var conditions []string
 	var args []interface{}
 	argIdx := 1
@@ -80,14 +77,12 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	// hitung total data
 	var total int64
 	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM products %s", whereClause)
 	if err := r.db.QueryRowContext(ctx, countSQL, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count query: %w", err)
 	}
 
-	// sorting (whitelist biar aman dari SQL injection)
 	sortColumn := "created_at"
 	switch filter.SortBy {
 	case "price":
@@ -136,7 +131,6 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 		return nil, 0, err
 	}
 
-	// simpan ke cache (background biar gak blocking)
 	go func() {
 		data, _ := json.Marshal(cachedProductList{Products: products, Total: total})
 		if err := r.cache.Set(context.Background(), cacheKey, data, cacheTTL).Err(); err != nil {
@@ -150,7 +144,6 @@ func (r *productRepository) FindAll(ctx context.Context, filter domain.ProductFi
 func (r *productRepository) FindByID(ctx context.Context, id uint) (*domain.Product, error) {
 	cacheKey := fmt.Sprintf("products:detail:%d", id)
 
-	// cek cache
 	cached, err := r.cache.Get(ctx, cacheKey).Result()
 	if err == nil {
 		var product domain.Product
@@ -159,7 +152,6 @@ func (r *productRepository) FindByID(ctx context.Context, id uint) (*domain.Prod
 		}
 	}
 
-	// cache miss, query ke database
 	query := `
 		SELECT id, name, type, price, COALESCE(description, ''), stock, created_at, updated_at
 		FROM products

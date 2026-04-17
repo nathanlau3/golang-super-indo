@@ -6,8 +6,6 @@ import (
 	"super-indo-api/internal/product/domain"
 )
 
-// Inbound port — kontrak yang ditawarkan application ke dunia luar (presentation layer)
-
 type CreateProductUseCase interface {
 	Execute(ctx context.Context, product *domain.Product) error
 }

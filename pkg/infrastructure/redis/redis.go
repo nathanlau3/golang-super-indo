@@ -16,7 +16,6 @@ func NewConnection(cfg *config.Config) *goredis.Client {
 		DB:       0,
 	})
 
-	// ping to check connection, tapi app tetap jalan meski redis mati
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		log.Printf("warning: redis not available: %v", err)
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// mock per use case
 type mockCreateProduct struct {
 	fn func(ctx context.Context, p *domain.Product) error
 }
@@ -47,10 +46,14 @@ func (m *mockGetProductByID) Execute(ctx context.Context, id uint) (*domain.Prod
 	return nil, nil
 }
 
+func noopAuth() gin.HandlerFunc {
+	return func(c *gin.Context) { c.Next() }
+}
+
 func setupTestRouter(h *ProductHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h.RegisterRoutes(r.Group("/product"))
+	h.RegisterRoutes(r.Group("/product"), noopAuth())
 	return r
 }
 

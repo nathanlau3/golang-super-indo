@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Domain errors
 var (
 	ErrProductNotFound    = errors.New("produk tidak ditemukan")
 	ErrInvalidProductType = errors.New("tipe produk tidak valid, gunakan: Sayuran, Protein, Buah, atau Snack")
@@ -13,7 +12,6 @@ var (
 	ErrInvalidPrice       = errors.New("harga produk harus lebih dari 0")
 )
 
-// ProductType adalah value object untuk kategori produk Super Indo
 type ProductType string
 
 const (
@@ -38,7 +36,6 @@ func (pt ProductType) String() string {
 	return string(pt)
 }
 
-// Product adalah entity utama yang merepresentasikan produk di Super Indo
 type Product struct {
 	ID          uint        `json:"id"`
 	Name        string      `json:"name"`
@@ -50,7 +47,6 @@ type Product struct {
 	UpdatedAt   time.Time   `json:"updated_at"`
 }
 
-// NewProduct membuat entity Product baru dengan validasi bisnis
 func NewProduct(name, productType string, price float64, description string, stock int) (*Product, error) {
 	if name == "" {
 		return nil, ErrEmptyProductName
@@ -74,12 +70,11 @@ func NewProduct(name, productType string, price float64, description string, sto
 	}, nil
 }
 
-// ProductFilter dipakai untuk query data produk dengan filter, search, dan sorting
 type ProductFilter struct {
 	Search string
 	Type   ProductType
-	SortBy string // name, price, date
-	Order  string // asc, desc
+	SortBy string
+	Order  string
 	Page   int
 	Limit  int
 }

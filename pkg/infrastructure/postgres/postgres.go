@@ -30,7 +30,6 @@ func NewConnection(cfg *config.Config) (*sql.DB, error) {
 	return db, nil
 }
 
-// RunMigration menjalankan SQL migration string ke database
 func RunMigration(db *sql.DB, migrationSQL string) error {
 	_, err := db.Exec(migrationSQL)
 	return err
